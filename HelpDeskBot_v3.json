@@ -1,0 +1,848 @@
+{
+  "name": "HelpDeskBot",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1520,
+        720
+      ],
+      "id": "f34c3da5-9b32-45a3-8900-ae34b6fff41a",
+      "name": "Telegram Trigger",
+      "webhookId": "8a972cab-c4b1-4271-ac63-a565f5d61ac8",
+      "credentials": {
+        "telegramApi": {
+          "id": "0lHudLLWakXBxVyn",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "telegram_user_id",
+              "value": "={{ $json.message.from.id }}",
+              "type": "number"
+            },
+            {
+              "id": "2",
+              "name": "telegram_chat_id",
+              "value": "={{ $json.message.chat.id }}",
+              "type": "number"
+            },
+            {
+              "id": "3",
+              "name": "user_message",
+              "value": "={{ $json.message.text }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "user_first_name",
+              "value": "={{ $json.message.from.first_name }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "telegram_username",
+              "value": "={{ $json.message.from.username || $json.message.from.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e4def2cf-324c-43de-82af-de84e97a4454",
+      "name": "Prepare Context",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1296,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o",
+          "mode": "list",
+          "cachedResultName": "BotIA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "USUARIOS_ESTADO",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "telegram_user_id",
+              "lookupValue": "={{ $('Prepare Context').item.json.telegram_user_id }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "id": "653f9fbc-8379-4a6e-a1db-7bfb119ca9ed",
+      "name": "Fetch User State",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -1072,
+        720
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X4YGEpoayl9yUuCt",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const userContext = $('Prepare Context').item.json;\nconst userState = $input.item.json;\n\nconst pantalla = userState.pantalla_actual || 'menu';\nlet datosTemp = {};\ntry { datosTemp = JSON.parse(userState.datos_temp || '{}'); } catch(e) {}\n\nconst prompt = 'Eres HelpDeskBot. Responde SOLO JSON valido sin markdown ni backticks. ' +\n'Formato: {\"msg\":\"texto\",\"pantalla\":\"pantalla\",\"accion\":\"ninguna|guardar_ticket|consultar_ticket|listar_tickets\",\"datos\":{\"tipo\":null,\"prioridad\":null,\"descripcion\":null},\"ticket\":null}. ' +\n'IMPORTANTE: accion debe ser exactamente una de: ninguna, guardar_ticket, consultar_ticket, listar_tickets. Nada mas. ' +\n'MENU(pantalla=menu): 0=ayuda 1=crear 2=consultar 3=mis_tickets. Ir a pantalla correspondiente. ' +\n'TIPO(pantalla=tipo): 1=Soporte Tecnico 2=Solicitud Administrativa 3=Consulta General 9=Cancelar. Guardar en datos.tipo. ' +\n'PRIORIDAD(pantalla=prioridad): 1=Alta 2=Media 3=Baja 9=Cancelar. Guardar en datos.prioridad. ' +\n'DESCRIPCION(pantalla=descripcion): Recibir texto 10-500 chars. Guardar en datos.descripcion. 9=Cancelar. ' +\n'CONFIRMACION(pantalla=confirmacion): Mostrar resumen de datos. 1=accion guardar_ticket 2=volver a descripcion 9=cancelar. ' +\n'CONSULTAR(pantalla=consultar): Pedir ID ticket. accion=consultar_ticket. 9=volver. ' +\n'MIS_TICKETS(pantalla=mis_tickets): accion=listar_tickets. ' +\n'Si mensaje es /start o hola mostrar bienvenida y menu principal. ' +\n'Opcion invalida: repetir pantalla actual con aviso. ' +\n'CONTEXTO ACTUAL: Usuario=' + userContext.user_first_name + ' Pantalla=' + pantalla + ' Datos=' + JSON.stringify(datosTemp) + ' Mensaje=' + userContext.user_message;\n\nreturn [{ json: {\n  prompt: prompt,\n  telegram_user_id: userContext.telegram_user_id,\n  telegram_chat_id: userContext.telegram_chat_id,\n  telegram_username: userContext.telegram_username,\n  user_first_name: userContext.user_first_name,\n  pantalla_actual: pantalla,\n  datos_temp: datosTemp\n}}];"
+      },
+      "id": "2b8522c1-e00f-4f1d-9fa5-315f8c783b2f",
+      "name": "Build Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -848,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-robotics-er-1.5-preview",
+          "mode": "list",
+          "cachedResultName": "models/gemini-robotics-er-1.5-preview"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "={{ $json.prompt }}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        -656,
+        720
+      ],
+      "id": "53270fde-fdd6-4992-bb2c-c01f644a09f6",
+      "name": "Message a model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "pI97cE245BWSlDC4",
+          "name": "Google Gemini(PaLM) Api account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $input.item.json;\nconst buildData = $('Build Prompt').item.json;\n\nconst raw =\n  item.content?.parts?.[0]?.text ||\n  item.candidates?.[0]?.content?.parts?.[0]?.text ||\n  item.text ||\n  item.output ||\n  '';\n\nlet parsed = {};\n\ntry {\n  const clean = raw\n    .replace(/```json/gi, '')\n    .replace(/```/g, '')\n    .trim();\n\n  parsed = JSON.parse(clean);\n} catch (e) {\n  parsed = {\n    msg: 'ERROR PARSE',\n    pantalla: 'menu',\n    accion: 'ninguna',\n    datos: {},\n    ticket: null\n  };\n}\n\nreturn [{\n  json: {\n    msg: parsed.msg,\n    pantalla: parsed.pantalla,\n    accion: parsed.accion,\n    datos: parsed.datos || {},\n    ticket: parsed.ticket || null,\n    telegram_user_id: buildData.telegram_user_id,\n    telegram_chat_id: buildData.telegram_chat_id,\n    telegram_username: buildData.telegram_username,\n    user_first_name: buildData.user_first_name\n  }\n}];"
+      },
+      "id": "a90300e7-3f50-424d-bbcb-d83329f04aaf",
+      "name": "Parse AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "guardar_ticket",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "f9af9b59-1cbb-4559-b3f2-5669716b7e8c"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "consultar_ticket",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "cd0b740e-976d-4af0-9be6-b6f9b66d9257"
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 3
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.accion }}",
+                    "rightValue": "listar_tickets",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "33aa7da9-81f9-4716-a0e7-532931944668"
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "id": "d4df84ef-e6bd-4f25-93b8-9918e7ab02cb",
+      "name": "Route Action",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.4,
+      "position": [
+        -176,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o",
+          "mode": "list",
+          "cachedResultName": "BotIA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1164082200,
+          "mode": "list",
+          "cachedResultName": "SOLICITUDES",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit#gid=1164082200"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id_ticket": "={{ 'TICKET-' + Date.now() }}",
+            "tipo": "={{ $json.datos.tipo }}",
+            "prioridad": "={{ $json.datos.prioridad }}",
+            "descripcion": "={{ $json.datos.descripcion }}",
+            "estado": "Abierto",
+            "creado_por": "={{ $json.telegram_username }}",
+            "fecha_creacion": "={{ new Date().toISOString() }}"
+          },
+          "matchingColumns": [
+            "id_ticket"
+          ],
+          "schema": [
+            {
+              "id": "id_ticket",
+              "displayName": "id_ticket",
+              "required": true,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "tipo",
+              "displayName": "tipo",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "prioridad",
+              "displayName": "prioridad",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "descripcion",
+              "displayName": "descripcion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "creado_por",
+              "displayName": "creado_por",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "fecha_creacion",
+              "displayName": "fecha_creacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "3344fdc4-f8d2-45c0-875b-339e9c5e3d29",
+      "name": "Save Ticket",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        464
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X4YGEpoayl9yUuCt",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o",
+          "mode": "list",
+          "cachedResultName": "BotIA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1164082200,
+          "mode": "list",
+          "cachedResultName": "SOLICITUDES",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit#gid=1164082200"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "id_ticket",
+              "lookupValue": "={{ $json.ticket }}"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "id": "a3dd0a11-a72a-45f9-b21c-1ed48a6697cb",
+      "name": "Query Ticket",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        720
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X4YGEpoayl9yUuCt",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o",
+          "mode": "list",
+          "cachedResultName": "BotIA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1164082200,
+          "mode": "list",
+          "cachedResultName": "SOLICITUDES",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit#gid=1164082200"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "creado_por",
+              "lookupValue": "={{ $json.telegram_username }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "8aa06e2a-4123-4510-910a-22934cb4e540",
+      "name": "List User Tickets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        48,
+        976
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X4YGEpoayl9yUuCt",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const userCtx = $('Prepare Context').item.json;\nconst aiData = $('Parse AI Response').item.json;\n\nreturn [{\n  json: {\n    telegram_user_id: userCtx.telegram_user_id,\n    telegram_username: userCtx.telegram_username,\n    pantalla_actual: aiData.pantalla,\n    datos_temp: JSON.stringify(aiData.datos || {}),\n    msg: aiData.msg,\n    telegram_chat_id: userCtx.telegram_chat_id,\n    log: {\n      timestamp: new Date().toISOString(),\n      telegram_user: String(userCtx.telegram_username || userCtx.telegram_user_id),\n      pantalla: aiData.pantalla,\n      opcion: userCtx.user_message,\n      resultado: 'ok'\n    }\n  }\n}];"
+      },
+      "id": "4bafcf68-4728-4904-81d8-802d0681003b",
+      "name": "Update User State",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        304,
+        720
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o",
+          "mode": "list",
+          "cachedResultName": "BotIA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "USUARIOS_ESTADO",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "telegram_user_id": "={{$json.telegram_user_id}}",
+            "pantalla_actual": "={{$json.pantalla_actual}}",
+            "datos_temp": "={{$json.datos_temp}}"
+          },
+          "matchingColumns": [
+            "telegram_user_id"
+          ],
+          "schema": [
+            {
+              "id": "telegram_user_id",
+              "displayName": "telegram_user_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "pantalla_actual",
+              "displayName": "pantalla_actual",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "datos_temp",
+              "displayName": "datos_temp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "9f1bd22b-ce70-4191-bf50-64fb94137842",
+      "name": "Save User State",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        528,
+        528
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X4YGEpoayl9yUuCt",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o",
+          "mode": "list",
+          "cachedResultName": "BotIA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 348560895,
+          "mode": "list",
+          "cachedResultName": "LOGS",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/11mez7jn3PwLNTXOPf886BV-J0gdmNq3QcAU6rSJlf-o/edit#gid=348560895"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "timestamp": "={{ $json.log.timestamp }}",
+            "telegram_user": "={{ $json.log.telegram_user }}",
+            "pantalla": "={{ $json.log.pantalla }}",
+            "opcion": "={{ $json.log.opcion }}",
+            "resultado": "={{ $json.log.resultado }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "timestamp",
+              "displayName": "timestamp",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "telegram_user",
+              "displayName": "telegram_user",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "pantalla",
+              "displayName": "pantalla",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "opcion",
+              "displayName": "opcion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            },
+            {
+              "id": "resultado",
+              "displayName": "resultado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "options": {}
+      },
+      "id": "73d397e0-8570-421c-ade4-3f3fc10d2b63",
+      "name": "Save Log",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        528,
+        912
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "X4YGEpoayl9yUuCt",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $json.telegram_chat_id }}",
+        "text": "={{ $json.msg }}",
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d0a205a1-89db-4348-ab8a-8a2ea14ae1d0",
+      "name": "Send Response",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        528,
+        720
+      ],
+      "webhookId": "8e3b6181-e2d4-4bf9-8602-45dfe713ce0e",
+      "credentials": {
+        "telegramApi": {
+          "id": "0lHudLLWakXBxVyn",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Context": {
+      "main": [
+        [
+          {
+            "node": "Fetch User State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch User State": {
+      "main": [
+        [
+          {
+            "node": "Build Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Prompt": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Parse AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse AI Response": {
+      "main": [
+        [
+          {
+            "node": "Route Action",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route Action": {
+      "main": [
+        [
+          {
+            "node": "Save Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Ticket",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "List User Tickets",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update User State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Ticket": {
+      "main": [
+        [
+          {
+            "node": "Update User State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Ticket": {
+      "main": [
+        [
+          {
+            "node": "Update User State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List User Tickets": {
+      "main": [
+        [
+          {
+            "node": "Update User State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update User State": {
+      "main": [
+        [
+          {
+            "node": "Send Response",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save User State",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Save Log",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "d52be887-2afc-45a6-bd76-2eb6bad7763e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "fc7ac5592a20deaf0a106e896c4cd04a31ce761ddd7ae21d52336a5821fa6da7"
+  },
+  "id": "kMI1msLIUnQlsEg0",
+  "tags": []
+}
