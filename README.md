@@ -230,3 +230,192 @@ En la hoja USUARIOS agrega una fila con:
 2. Crear los nodos Code de la rama con el contrato de datos documentado arriba
 3. Conectar la rama al nodo `Guardar en bitacora`
 4. Agregar el nombre del nodo productor final a la lista `PRODUCTORES` en `Preparar envio`
+
+---
+
+## Diagrama del flujo de trabajo (n8n)
+
+```mermaid
+flowchart TD
+    %% ─────────────────────────────────────────
+    %% BLOQUE 1 — Entrada y acceso
+    %% ─────────────────────────────────────────
+    TG([📨 Telegram Trigger])
+    BU[🔍 Buscar Usuario\nGoogle Sheets]
+    VU{Verificar\nusuario activo?}
+    MSA[❌ Mensaje sin acceso\nTelegram]
+
+    TG --> BU --> VU
+    VU -- "activo = FALSE" --> MSA
+    VU -- "activo = TRUE" --> LS
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 2 — Sesión y contexto
+    %% ─────────────────────────────────────────
+    LS[📋 Leer Sesiones\nGoogle Sheets]
+    PC[⚙️ Preparar contexto\nCode]
+
+    LS --> PC
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 3 — Enrutamiento por estado
+    %% ─────────────────────────────────────────
+    RE{🔀 Router de estado\nSwitch}
+
+    PC --> RE
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 4 — Rama MENU
+    %% ─────────────────────────────────────────
+    VOM{Validar opción\nde menú?}
+    MP{Menu principal\nSwitch}
+    AY[💬 Mostrar ayuda\nCode]
+    OIM[⚠️ Opción inválida\nmenú — Code]
+
+    RE -- "estado = MENU" --> VOM
+    VOM -- válida --> MP
+    VOM -- inválida --> OIM
+    MP -- "0 Ayuda" --> AY
+    MP -- "1 Crear" --> ICS
+    MP -- "2 Consultar" --> ICID
+    MP -- "3 Mis tickets" --> LMT
+    MP -- "4 Reportes" --> LTR
+    MP -- "5 Config" --> LPU
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 5 — Wizard crear solicitud
+    %% ─────────────────────────────────────────
+    ICS[🆕 Iniciar creación\nde solicitud — Code]
+    ST{Selección de tipo\nSwitch}
+    GTS[💾 Guardar tipo\nseleccionado — Code]
+    CLS[🚫 Cancelar y limpiar\nsesión — Code]
+    TI[⚠️ Tipo inválido\nCode]
+    GP[💾 Guardar prioridad\nCode]
+    GD[💾 Guardar descripción\nCode]
+    VC[🔎 Verificar\nconfirmación — Code]
+    GTK{Guardar ticket?\nIF}
+    RT[💾 Registrar ticket\nGoogle Sheets]
+
+    RE -- "estado = TIPO" --> ST
+    RE -- "estado = PRIORIDAD" --> GP
+    RE -- "estado = DESCRIPCION" --> GD
+    RE -- "estado = CONFIRMACION" --> VC
+
+    ICS --> GBL
+    ST -- "1/2/3 tipo válido" --> GTS
+    ST -- "9 cancelar" --> CLS
+    ST -- inválido --> TI
+    GTS --> GBL
+    CLS --> GBL
+    TI --> GBL
+    GP --> GBL
+    GD --> GBL
+    VC --> GTK
+    GTK -- "confirmar = true" --> RT
+    GTK -- "no guardar" --> GBL
+    RT --> GBL
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 6 — Consultar por ID
+    %% ─────────────────────────────────────────
+    ICID[🔎 Iniciar consulta\npor ID — Code]
+    BTID[🔍 Buscar ticket\npor ID — Google Sheets]
+    FC[📄 Formatear consulta\nCode]
+
+    RE -- "estado = CONSULTAR" --> BTID
+    ICID --> GBL
+    BTID --> FC --> GBL
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 7 — Mis solicitudes
+    %% ─────────────────────────────────────────
+    LMT[📋 Leer mis tickets\nGoogle Sheets]
+    FMT[📄 Formatear mis\ntickets — Code]
+
+    LMT --> FMT --> GBL
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 8 — Reportes
+    %% ─────────────────────────────────────────
+    LTR[📊 Leer tickets\npara reporte — Google Sheets]
+    FR[📄 Formatear\nreporte — Code]
+
+    LTR --> FR --> GBL
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 9 — Config / Admin
+    %% ─────────────────────────────────────────
+    LPU[👤 Leer perfil\ndel usuario — Google Sheets]
+    EP[⚙️ Evaluar perfil\nCode]
+    OC{Opciones de config\nSwitch}
+    ICE[🔧 Iniciar cambio\nde estado — Code]
+    SC[↩️ Salir de config\nCode]
+    OIC[⚠️ Opción inválida\nconfig — Code]
+    GITE[💾 Guardar ID ticket\npara estado — Code]
+    SNE{Seleccionar\nnuevo estado — Switch}
+    PNE[⚙️ Preparar nuevo\nestado — Code]
+    AE[💾 Actualizar estado\nGoogle Sheets]
+    CCE[🚫 Cancelar cambio\nestado — Code]
+    EI[⚠️ Estado inválido\nCode]
+
+    RE -- "estado = CONFIG" --> OC
+    RE -- "estado = ESTADO_ID" --> GITE
+    RE -- "estado = ESTADO_NUEVO" --> SNE
+
+    LPU --> EP --> GBL
+    OC -- "1 cambiar estado" --> ICE
+    OC -- "9 volver" --> SC
+    OC -- inválida --> OIC
+    ICE --> GBL
+    SC --> GBL
+    OIC --> GBL
+    GITE --> GBL
+    SNE -- "1 Abierto" --> PNE
+    SNE -- "2 En proceso" --> PNE
+    SNE -- "3 Cerrado" --> PNE
+    SNE -- "9 cancelar" --> CCE
+    SNE -- inválido --> EI
+    PNE --> AE --> GBL
+    CCE --> GBL
+    EI --> GBL
+
+    %% ─────────────────────────────────────────
+    %% BLOQUE 10 — Persistencia común (convergencia)
+    %% ─────────────────────────────────────────
+    GBL[📝 Guardar en bitácora\nGoogle Sheets]
+    PE[⚙️ Preparar envío\nCode]
+    GS[💾 Guardar sesión\nGoogle Sheets]
+    ER([📤 Enviar respuesta\nTelegram])
+
+    AY --> GBL
+    OIM --> GBL
+    GBL --> PE --> GS --> ER
+
+    %% ─────────────────────────────────────────
+    %% Estilos por bloque
+    %% ─────────────────────────────────────────
+    classDef entrada    fill:#4A90D9,stroke:#2c5f8a,color:#fff
+    classDef acceso     fill:#5BA85A,stroke:#3a7039,color:#fff
+    classDef sesion     fill:#8E6BBF,stroke:#5e408a,color:#fff
+    classDef router     fill:#E8A838,stroke:#b07820,color:#fff
+    classDef menu       fill:#5BA85A,stroke:#3a7039,color:#fff
+    classDef wizard     fill:#4A90D9,stroke:#2c5f8a,color:#fff
+    classDef consulta   fill:#56B4A0,stroke:#337a6e,color:#fff
+    classDef mistickets fill:#56B4A0,stroke:#337a6e,color:#fff
+    classDef reportes   fill:#D97B4A,stroke:#a05020,color:#fff
+    classDef config     fill:#BF6B6B,stroke:#8a3a3a,color:#fff
+    classDef comun      fill:#888,stroke:#555,color:#fff
+    classDef terminal   fill:#333,stroke:#111,color:#fff
+
+    class TG,ER terminal
+    class BU,VU,MSA acceso
+    class LS,PC sesion
+    class RE router
+    class VOM,MP,AY,OIM menu
+    class ICS,ST,GTS,CLS,TI,GP,GD,VC,GTK,RT wizard
+    class ICID,BTID,FC consulta
+    class LMT,FMT mistickets
+    class LTR,FR reportes
+    class LPU,EP,OC,ICE,SC,OIC,GITE,SNE,PNE,AE,CCE,EI config
+    class GBL,PE,GS comun
+```
